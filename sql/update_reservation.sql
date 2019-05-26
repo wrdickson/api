@@ -1,0 +1,1 @@
+UPDATE `reservations` SET `space_id` = '%_space_id%', `checkin` = '%_check_in%', `checkout` = '%_check_out%', `people` = '%_people%', `beds` = '%_beds%', `notes` = '%_notes%', `guest_id` = '%_guest_id%' WHERE `uid` = '%_resuid%'
