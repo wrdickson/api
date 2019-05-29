@@ -218,6 +218,8 @@ function getReservations () {
     $response['execute']= $stmt->execute();
     $arr= array();
     while($obj = $stmt->fetch(PDO::FETCH_OBJ)){
+        $cust = new Customer($obj->customer);
+        
         $iArr = array();
         $iArr['id'] = $obj->id;
         $iArr['space_id'] = $obj->space_id;
@@ -226,6 +228,7 @@ function getReservations () {
         $iArr['checkin'] = $obj->checkin;
         $iArr['checkout'] = $obj->checkout;
         $iArr['customer'] = $obj->customer;
+        $iArr['customer_obj'] = $cust->dumpArray();
         $iArr['people'] = $obj->people;
         $iArr['beds'] = $obj->beds;
         $iArr['folio'] = $obj->folio;
@@ -280,7 +283,7 @@ function getSpaces() {
     $pdo = DataConnector::getConnection();
     //todo validate user
 
-    $stmt = $pdo->prepare("SELECT * FROM spaces");
+    $stmt = $pdo->prepare("SELECT * FROM spaces ORDER BY show_order ASC");
     $success= $stmt->execute();
     $arr= array();
     while($obj = $stmt->fetch(PDO::FETCH_OBJ)){
@@ -288,8 +291,14 @@ function getSpaces() {
         $iArr['space_id'] = $obj->space_id;
         $iArr['space_type'] = $obj->space_type;
         $iArr['description'] = $obj->description;
-        $iArr['has_subspaces'] = $obj->has_subspaces;
+        $iArr['child_of'] = $obj->child_of;
+        //!! IMPORTANT !!
+        //casting to (bool) is important when we want to toggle the value in $store
+        //if it's passed as 0 or 1, the toggle behavior is erratic
+        $iArr['show_subspaces'] = (bool) $obj->show_subspaces;
+        $iArr['show_order'] = $obj->show_order;
         $iArr['space_code'] = $obj->space_code;
+        $iArr['subspaces'] = $obj->subspaces;
         $iArr['beds'] = $obj->beds;
         $iArr['people'] = $obj->people;
         $iArr['select_group'] = $obj->select_group;
