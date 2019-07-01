@@ -1,7 +1,5 @@
 <?php
 Class Spaces{
-
-
   public static function get_all_space_ids(){
     $pdo= DataConnector::getConnection();
     $stmt = $pdo->prepare("SELECT space_id FROM spaces");

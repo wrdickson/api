@@ -24,9 +24,10 @@ public static function checkAvailability( $start, $end, $spaceId ){
 }
 
 public static function checkAvailabilityByDates($start, $end){
+  $response = array();
   $pdo = DataConnector::getConnection();
   //first, get all reservations that conflict with those dates
-  $stmt = $pdo->prepare("SELECT * FROM reservations WHERE checkin < :end AND checkout > :start");
+  $stmt = $pdo->prepare("SELECT * FROM reservations WHERE checkin <= :end AND checkout > :start");
   $stmt->bindParam(":start", $start, PDO::PARAM_STR);
   $stmt->bindParam(":end", $end, PDO::PARAM_STR);
   $stmt->execute();
@@ -43,7 +44,8 @@ public static function checkAvailabilityByDates($start, $end){
   //fourth, get only those from all space_ids that are
   //NOT in the array of booked id's
   $availableSpaceIds = array_diff($allSpaceIds, $rArr);
-  return $availableSpaceIds;
+  $response['availableSpaceIds'] = $availableSpaceIds;
+  return $response;
 }
 
 public static function checkConflictsByIdDate($start, $end, $spaceId ){
@@ -76,12 +78,12 @@ public static function checkConflictsByIdDate($start, $end, $spaceId ){
     };
 }
 
-public static function checkUpdateAvailability( $start, $end, $spaceId, $resId ){
+public static function checkUpdateAvailability( $start, $end, $spaceCode, $resId ){
     $response = array();
     $response['start'] = $start;
     $response['end']= $end;
-    $response['spaceId'] = $spaceId;
-    $exploded = explode(",",$spaceId);
+    $response['spaceCode'] = $spaceCode;
+    $exploded = explode(",",$spaceCode);
     $response['explode'] = $exploded;
     $iQuery = array();
     foreach( $exploded as $i => $sId) {
@@ -107,7 +109,7 @@ public static function checkUpdateConflicts($start, $end, $spaceId, $resId ){
     $stmt = $pdo->prepare("SELECT * FROM `reservations` WHERE FIND_IN_SET( :spaceId, space_code ) > 0 AND ( :start < `checkout` AND :end > `checkin` )");
     $stmt->bindParam(":start", $start, PDO::PARAM_STR);
     $stmt->bindParam(":end", $end, PDO::PARAM_STR);
-    $stmt->bindParam(":spaceId", $spaceId, PDO::PARAM_INT);
+    $stmt->bindParam(":spaceId", $spaceId, PDO::PARAM_STR);
     $success = $stmt->execute();
     $pdoError = $pdo->errorInfo();
     $response['success'] = $success;
@@ -128,10 +130,11 @@ public static function checkUpdateConflicts($start, $end, $spaceId, $resId ){
     };
     $response['hits'] = $rArr;
     if(sizeOf($response['hits']) > 0){
-        return false;
+        return $rArr;
     } else {
         return true;
     };
+    return $rArr;
 }
 
 

@@ -28,9 +28,10 @@ $app = new \Slim\Slim();
 
 //route the requests
 //$app->get('/checkAvailability/:start/:end/:spaceId', 'checkAvailability');
-$app->get('/checkAvailability/', 'checkAvailability');
+//$app->get('/checkAvailability/', 'checkAvailability');
 $app->get('/checkAvailabilityByDates/:start/:end', 'checkAvailabilityByDates');
-$app->get('/checkUpdateAvailability/', 'checkUpdateAvailability');
+//$app->get('/checkUpdateAvailability/', 'checkUpdateAvailability');
+$app->post('/checkAvailability/','checkAvailability');
 $app->get('/customers/', 'getCustomers');
 $app->get('/customers/:id', 'getCustomer');
 $app->post('/customers/:id', 'updateCustomer');
@@ -97,66 +98,77 @@ function addReservation () {
 function checkAvailability( ){
   $app = \Slim\Slim::getInstance();
   $response = array();
-  $response['params'] = $app->request->params();
-  
-  $params = $app->request->params();
-  
-  //sanitize
-
-
-  $gump = new GUMP();
-  
-  $params = $gump->sanitize($params);
-  $response['sParams'] = $params;
-  
-  $params['test1'] = "hello";
-  
-  $gump->validation_rules(array(
-    'start'     => 'required|date',
-    'end'       => 'required|date',
-    'spaceCode' => 'required|numeric',
-    'test1'     => 'is_object'
-  ));
-
-  $gump->filter_rules(array(
-    'start'       =>  'trim|sanitize_string',
-    'end'         =>  'trim|sanitize_string',       
-    'spaceCode'   =>  'trim'
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $response['session'] = $_SESSION;
+  //TODO validate user . . 
+  /*
+  //  THIS IS THE CODE FOR CHECKING ON A NEW RESERVATION
+  */
+  if($params['is_new_res'] == true){
+    //get the space_code from the space_id . . .
+    $space_code = Spaces::get_subspaces($params['space_id']);
+    $response['space_code'] = $space_code;
     
-  ));
-  
-  
-  
+    //build an array of the subspaces . . . 
+    $spaces_array = explode(',' , $space_code);
+    $response['spaces_array'] = $spaces_array;
 
-  $validated_data = $gump->run($params);  
-  $response['validated_data'] = $validated_data;
-  if($validated_data === false) {
-    $response['validationError'] = $gump->get_readable_errors(true);
-  } else {
-    //check to see if the space_id has subspaces
-    
-  }  
-  
-  $subspaces = Spaces::get_subspaces($params['spaceCode']);
-  $response['subspaces'] = $subspaces;
+    //iterate through those subspaces and check availability . . .
+    $pdo = DataConnector::getConnection();
+    //convenience: build new variables
+    $start = $params['start'];
+    $end = $params['end'];
+    $space_id = $params['space_id'];
+    $is_available = true;
+    $queries_by_space = array();
+    foreach( $spaces_array as $space ){
+      //works, note the comparators are "<" and ">", not "<=" and ">=" because
+      //we do allow overlap in sense that one person can checkout on the same
+      //day someone checks in
+      //  https://stackoverflow.com/questions/325933/determine-whether-two-date-ranges-overlap
+      $stmt = $pdo->prepare("SELECT * FROM `reservations` WHERE FIND_IN_SET( :space_id, space_code ) > 0 AND ( :start <= `checkout` AND :end > `checkin` )");
+      $stmt->bindParam(":start", $start, PDO::PARAM_STR);
+      $stmt->bindParam(":end", $end, PDO::PARAM_STR);
+      $stmt->bindParam(":space_id", $space, PDO::PARAM_STR);
+      $success = $stmt->execute();
+      $pdoError = $pdo->errorInfo();
+      $response['pdo_error'] = $pdoError;
+      $response['success'] = $success;
+      $conflicts_array = array();
+      //todo? handle the case where the  space_id doesn't exist
+      while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
+          $iArr = array();
+          $iArr['id'] = $obj->id;
+          $iArr['start'] = $start;
+          $iArr['end'] = $end;
+          array_push($conflicts_array, $iArr);
+          
+      };
+      if(sizeOf($conflicts_array) > 0){
+        $is_available = false;
+      };
+      $queries_by_space[ $space ] = $conflicts_array;
+    };
+    $response['queries_by_space'] = $queries_by_space;
+    $response['is_available'] = $is_available;
+    print json_encode($response);
+  /*
+  //  THIS IS THE CODE FOR CHECKING ON AN EXISTING RESERVATION
+  */
+  }else{
+    print "update";
+  }
 
-  $start = $app->request->get('start');
-  $end = $app->request->get('end');
-  $spaceId = $app->request->get('spaceCode');
-  $aQuery = Reservations::checkAvailability( $start, $end, $params['spaceCode']);
-  $response['bQuery'] = Reservations::checkConflictsByIdDate( $start, $end, $spaceId );
-  $response['query'] = $aQuery;
-  // todo, validate beds/ people
   
-  print json_encode($response);
 }
 
 function checkAvailabilityByDates( $start,$end ){
   $response = array();
   $response['start'] = $start;
   $response['end'] = $end;
-  $response['available_space_ids'] = array();
-  $response['available_space_ids'] = Reservations::checkAvailabilityByDates($start, $end);
+
+  $response['execute'] = Reservations::checkAvailabilityByDates($start, $end);
   print json_encode($response);
 };
 
@@ -165,7 +177,7 @@ function checkUpdateAvailability(){
   $response = array();
   $params = $app->request->params();
   $response['params'] = $app->request->params();
-  $subspaces = Spaces::get_subspaces($params['spaceCode']);
+  $subspaces = Spaces::get_subspaces($params['spaceId']);
   $response['subspaces'] = $subspaces;
   $start = $app->request->get('start');
   $end = $app->request->get('end');
