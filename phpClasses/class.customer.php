@@ -32,8 +32,7 @@ Class Customer {
     }
   }
   
-  function addCustomer($user, $lastName, $firstName, $address1, $address2, $city, $region, $country, $postalCode, $phone, $email){
-    //todo validate user
+  public static function addCustomer($lastName, $firstName, $address1, $address2, $city, $region, $country, $postalCode, $phone, $email){
     
     //todo validate parameters
     

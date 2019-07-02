@@ -32,25 +32,31 @@ $app = new \Slim\Slim();
 $app->get('/checkAvailabilityByDates/:start/:end', 'checkAvailabilityByDates');
 //$app->get('/checkUpdateAvailability/', 'checkUpdateAvailability');
 $app->post('/checkAvailability/','checkAvailability');
+
+//customers
 $app->get('/customers/', 'getCustomers');
 $app->get('/customers/:id', 'getCustomer');
 $app->post('/customers/:id', 'updateCustomer');
+$app->post('/customers/', 'createCustomer');
 $app->put('/something/:id', 'updateSomething');
 $app->get('/tmpCreateUser/', 'tmpCreateUser');
-
-
 $app->post('/customerSearch/', 'customerSearch');
 $app->post('/customers/:id', 'updateCustomer');
 
 $app->get('/spaces/', 'getSpaces');
 $app->get('/selectGroups/', 'getSelectGroups');
 $app->get('/types/', 'getTypes');
+
+//reservations
 $app->get('/reservations/:id', 'getReservation');
+$app->put('/reservations/:id', 'updateReservation');
 $app->get('/reservations/', 'getReservations');
+$app->post('/reservations/', 'addReservation');
+
 $app->post('/gump/', 'testGump');
 $app->post('/login/','login');
 $app->post('/logoff/', 'logoff');
-$app->post('/reservations/', 'addReservation');
+
 $app->post('/openShift/', 'openShift');
 
 $app->get('/folios/', 'getFolios');
@@ -64,29 +70,21 @@ function updateSomething($id){
 function addReservation () {
     $app = \Slim\Slim::getInstance();
     $response = array();
-    //first get the space_code from space_id
-    $response['body'] = $app->request->getBody();
     $params = json_decode($app->request->getBody(), true);
-    $response['params'] = json_decode($app->request->getBody(), true);    
-
-    //get the space type
-    $space_code = Spaces::get_subspaces($params['space_id']);
-    $response['space_code'] = $space_code;
-  
-    //temp
-    $space_type = 2;
-     
+    //TODO validate user . . . 
+    $user = $params['user'];
+    //TODO validate reservation . . .
+    $reservation = $params['reservation'];
     
     $pdo = DataConnector::getConnection();
-    $stmt = $pdo->prepare("INSERT INTO reservations (space_id, space_code, space_type, checkin, checkout, customer, people, beds, folio, status, notes) VALUES (:space_id, :space_code, :space_type, :checkin, :checkout, :customer, :people, :beds, '0', '1', '[]')");
-    $stmt->bindParam(":space_id", $params['space_id'], PDO::PARAM_STR);
-    $stmt->bindParam(":space_code", $space_code, PDO::PARAM_STR);
-    $stmt->bindParam(":space_type", $space_type, PDO::PARAM_INT);
-    $stmt->bindParam(":checkin", $params['start'], PDO::PARAM_STR);
-    $stmt->bindParam(":checkout", $params['end'], PDO::PARAM_STR);
-    $stmt->bindParam(":customer", $params['customer'], PDO::PARAM_INT);
-    $stmt->bindParam(":people", $params['people'], PDO::PARAM_INT);
-    $stmt->bindParam(":beds", $params['beds'], PDO::PARAM_INT);
+    $stmt = $pdo->prepare("INSERT INTO reservations (space_id, space_code, checkin, checkout, customer, people, beds, folio, status, notes, history) VALUES (:space_id, :space_code, :checkin, :checkout, :customer, :people, :beds, '0', '1', '[]', '[]')");
+    $stmt->bindParam(":space_id", $reservation['space_id'], PDO::PARAM_STR);
+    $stmt->bindParam(":space_code", $reservation['space_code'], PDO::PARAM_STR);
+    $stmt->bindParam(":checkin", $reservation['checkin'], PDO::PARAM_STR);
+    $stmt->bindParam(":checkout", $reservation['checkout'], PDO::PARAM_STR);
+    $stmt->bindParam(":customer", $reservation['customer'], PDO::PARAM_INT);
+    $stmt->bindParam(":people", $reservation['people'], PDO::PARAM_INT);
+    $stmt->bindParam(":beds", $reservation['beds'], PDO::PARAM_INT);
     $response['stmt'] = $stmt;
     $response['execute'] = $stmt->execute();
     $response['errorInfo'] = $stmt->errorInfo();
@@ -127,7 +125,7 @@ function checkAvailability( ){
       //we do allow overlap in sense that one person can checkout on the same
       //day someone checks in
       //  https://stackoverflow.com/questions/325933/determine-whether-two-date-ranges-overlap
-      $stmt = $pdo->prepare("SELECT * FROM `reservations` WHERE FIND_IN_SET( :space_id, space_code ) > 0 AND ( :start <= `checkout` AND :end > `checkin` )");
+      $stmt = $pdo->prepare("SELECT * FROM `reservations` WHERE FIND_IN_SET( :space_id, space_code ) > 0 AND ( :start < `checkout` AND :end > `checkin` )");
       $stmt->bindParam(":start", $start, PDO::PARAM_STR);
       $stmt->bindParam(":end", $end, PDO::PARAM_STR);
       $stmt->bindParam(":space_id", $space, PDO::PARAM_STR);
@@ -143,7 +141,6 @@ function checkAvailability( ){
           $iArr['start'] = $start;
           $iArr['end'] = $end;
           array_push($conflicts_array, $iArr);
-          
       };
       if(sizeOf($conflicts_array) > 0){
         $is_available = false;
@@ -156,11 +153,59 @@ function checkAvailability( ){
   /*
   //  THIS IS THE CODE FOR CHECKING ON AN EXISTING RESERVATION
   */
-  }else{
-    print "update";
-  }
+  } else {
+    //get the space_code from the space_id . . .
+    $space_code = Spaces::get_subspaces($params['space_id']);
+    $response['space_code'] = $space_code;
+    
+    //build an array of the subspaces . . . 
+    $spaces_array = explode(',' , $space_code);
+    $response['spaces_array'] = $spaces_array;
 
-  
+    //iterate through those subspaces and check availability . . .
+    $pdo = DataConnector::getConnection();
+    //convenience: build new variables
+    $start = $params['start'];
+    $end = $params['end'];
+    $space_id = $params['space_id'];
+    $res_id = $params['res_id'];
+    $is_available = true;
+    $queries_by_space = array();
+    foreach( $spaces_array as $space ){
+      //works, note the comparators are "<" and ">", not "<=" and ">=" because
+      //we do allow overlap in sense that one person can checkout on the same
+      //day someone checks in
+      //  https://stackoverflow.com/questions/325933/determine-whether-two-date-ranges-overlap
+      $stmt = $pdo->prepare("SELECT * FROM `reservations` WHERE FIND_IN_SET( :space_id, space_code ) > 0 AND ( :start < `checkout` AND :end > `checkin` )");
+      $stmt->bindParam(":start", $start, PDO::PARAM_STR);
+      $stmt->bindParam(":end", $end, PDO::PARAM_STR);
+      $stmt->bindParam(":space_id", $space, PDO::PARAM_STR);
+      $success = $stmt->execute();
+      $pdoError = $pdo->errorInfo();
+      $response['pdo_error'] = $pdoError;
+      $response['success'] = $success;
+      $conflicts_array = array();
+      //todo? handle the case where the  space_id doesn't exist
+      while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
+          $iArr = array();
+          $iArr['id'] = $obj->id;
+          $iArr['start'] = $start;
+          $iArr['end'] = $end;
+          //THIS IS THE CRITICAL LOGIC FOR UPDATE
+          //exclude if this is the same res id!!!
+          if( $obj->id != (string)$res_id ){
+            array_push($conflicts_array, $iArr);
+          }
+      };
+      if(sizeOf($conflicts_array) > 0){
+        $is_available = false;
+      };
+      $queries_by_space[ $space ] = $conflicts_array;
+    };
+    $response['queries_by_space'] = $queries_by_space;
+    $response['is_available'] = $is_available;
+    print json_encode($response);
+  }
 }
 
 function checkAvailabilityByDates( $start,$end ){
@@ -184,6 +229,30 @@ function checkUpdateAvailability(){
   $spaceId = $app->request->get('spaceCode');  
   $resId = $app->request->get('resId');
   $response['query'] = Reservations::checkUpdateAvailability( $start, $end, $subspaces, $resId);
+  print json_encode($response);
+}
+
+function createCustomer(){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  //TODO validate user and customer
+  $lastName = $params['customer']['lastName'];
+  $firstName = $params['customer']['firstName'];
+  $address1 = $params['customer']['address1'];
+  $address2 = $params['customer']['address2'];
+  $city = $params['customer']['city'];
+  $region = $params['customer']['region'];
+  $postalCode = $params['customer']['postalCode'];
+  $country = $params['customer']['country'];
+  $phone = $params['customer']['phone'];
+  $email = $params['customer']['email'];
+  $newId = Customer::addCustomer( $lastName, $firstName, $address1, $address2, $city, $region, $country, $postalCode, $phone, $email );
+  $response['newCustomerId'] = $newId;
+  $newCustomer = new Customer($newId);
+  $response['newCustomer'] = $newCustomer->dumpArray();
+
   print json_encode($response);
 }
 
@@ -236,7 +305,6 @@ function getReservations () {
         $iArr['id'] = $obj->id;
         $iArr['space_id'] = $obj->space_id;
         $iArr['space_code'] = $obj->space_code;
-        $iArr['space_type'] = $obj->space_type;
         $iArr['checkin'] = $obj->checkin;
         $iArr['checkout'] = $obj->checkout;
         $iArr['customer'] = $obj->customer;
@@ -465,6 +533,23 @@ function updateCustomer($id){
   $uCustomer = new Customer($id);
   $response['updatedCustomer'] = $uCustomer->dumpArray();
   
+  print json_encode($response);
+}
+
+function updateReservation($id){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $res_id = $params['reservation']['id'];
+  $reservation = new Reservation($res_id);
+  $response['oa'] = (array)$reservation;
+  //TODO validate user
+  //TODO validate data
+
+  $response['execute'] = $reservation->update( $params['reservation']['space_id'], $params['reservation']['space_code'], $params['reservation']['checkin'], $params['reservation']['checkout'], $params['reservation']['people'], $params['reservation']['beds'], $params['reservation']['folio'], $params['reservation']['status'], json_encode($params['reservation']['history']), json_encode($params['reservation']['notes']), $params['reservation']['customer'] );
+
+
   print json_encode($response);
 }
 
