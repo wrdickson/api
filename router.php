@@ -52,11 +52,17 @@ $app->get('/reservations/:id', 'getReservation');
 $app->put('/reservations/:id', 'updateReservation');
 $app->get('/reservations/', 'getReservations');
 $app->post('/reservations/', 'addReservation');
+$app->post('/reservationNotes/:id', 'addReservationNote');
+
+//shifts
+$app->get('/userShift/:id', 'getUserShift');
 
 $app->post('/gump/', 'testGump');
 $app->post('/login/','login');
 $app->post('/logoff/', 'logoff');
 
+
+//shifts
 $app->post('/openShift/', 'openShift');
 
 $app->get('/folios/', 'getFolios');
@@ -91,6 +97,29 @@ function addReservation () {
     $response['insertId']= $pdo->lastInsertId(); 
 
     print json_encode($response);
+}
+
+function addReservationNote( $resId ){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $response['session'] = $_SESSION;
+  //TODO validate user
+  //TODO validate content
+  $iReservation = new Reservation($resId);
+  $response['originalReservation'] = (array)$iReservation;
+  //add the note
+  $params['note']['text'] = nl2br($params['note']['text']);
+  $response['addNoteReturn'] = $iReservation->addNote($params['note']);
+  $response['iResPreSave'] = (array)$iReservation;
+  $response['execute'] = $iReservation->update_to_db();
+  $response['iResPostSave'] = (array)$iReservation;
+  $jReservation = new Reservation($resId);
+  $response['updatedReservation'] = $jReservation;
+
+
+  print json_encode($response);
 }
 
 function checkAvailability( ){
@@ -419,6 +448,12 @@ function getTypes(){
     print json_encode($response);
 }
 
+function getUserShift( $userId ){
+  $response = array();
+  $response['openShift'] = Shift::getUserOpenShift($userId);
+  print json_encode($response);
+}
+
 function login (){
     $app = \Slim\Slim::getInstance();
     $response = array();
@@ -443,19 +478,13 @@ function openShift(){
     $app = \Slim\Slim::getInstance();
     $response = array();
     $params = json_decode($app->request->getBody(), true);
-    $iPerson = new Person( $params['userId'] );
-    $keyVerified = $iPerson->verify_key($params['key']);
-    $response['keyVerified'] = $keyVerified;
-    $response['shifts'] = Shift::get_shifts_by_user( $params['userId'] );
-    
-    $response['params'] = $params;
-    if($keyVerified == true){
-      $response['shiftId'] = Shift::open_shift( $params['userId'], $params['startDate']);
-      print json_encode($response);
-    }else{
-      print json_encode($response);
-    }
-    
+    //TODO verify user . . . 
+    $iPerson = new Person( $params['user']['userId'] );
+    $newShiftId = Shift::open_shift( $params['user']['userId'], $params['startDate']);
+    $response['shiftId'] = $newShiftId;
+    $newShift = new Shift($newShiftId);
+    $response['shift'] = $newShift->to_array();
+    print json_encode($response);
 }
 
 function testGump(){
@@ -537,19 +566,12 @@ function updateCustomer($id){
 }
 
 function updateReservation($id){
+  //TODO validate user and data
   $app = \Slim\Slim::getInstance();
   $response = array();
   $params = json_decode($app->request->getBody(), true);
   $response['params'] = $params;
-  $res_id = $params['reservation']['id'];
-  $reservation = new Reservation($res_id);
-  $response['oa'] = (array)$reservation;
-  //TODO validate user
-  //TODO validate data
-
-  $response['execute'] = $reservation->update( $params['reservation']['space_id'], $params['reservation']['space_code'], $params['reservation']['checkin'], $params['reservation']['checkout'], $params['reservation']['people'], $params['reservation']['beds'], $params['reservation']['folio'], $params['reservation']['status'], json_encode($params['reservation']['history']), json_encode($params['reservation']['notes']), $params['reservation']['customer'] );
-
-
+  $response['execute'] = Reservation::update_from_params( $params['reservation']['id'], $params['reservation']['space_id'], $params['reservation']['space_code'], $params['reservation']['checkin'], $params['reservation']['checkout'], $params['reservation']['people'], $params['reservation']['beds'], $params['reservation']['folio'], $params['reservation']['status'], json_encode($params['reservation']['history']), json_encode($params['reservation']['notes']), $params['reservation']['customer'] );
   print json_encode($response);
 }
 
