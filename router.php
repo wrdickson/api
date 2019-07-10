@@ -13,6 +13,8 @@ require "phpClasses/class.spaces.php";
 require "phpClasses/class.reservation.php";
 require "phpClasses/class.folio.php";
 require "phpClasses/class.shift.php";
+require "phpClasses/class.sales_item.php";
+require "phpClasses/class.sale.php";
 
 
 GUMP::add_validator("is_object", function($field, $input, $param = 'something') {
@@ -47,6 +49,9 @@ $app->get('/spaces/', 'getSpaces');
 $app->get('/selectGroups/', 'getSelectGroups');
 $app->get('/types/', 'getTypes');
 
+//folios
+$app->post('/folios/:id', 'getFolio');
+
 //reservations
 $app->get('/reservations/:id', 'getReservation');
 $app->put('/reservations/:id', 'updateReservation');
@@ -54,18 +59,16 @@ $app->get('/reservations/', 'getReservations');
 $app->post('/reservations/', 'addReservation');
 $app->post('/reservationNotes/:id', 'addReservationNote');
 
+//sales items
+$app->get('/sales-items/', 'getSalesItems');
+
 //shifts
 $app->get('/userShift/:id', 'getUserShift');
+$app->post('/openShift/', 'openShift');
 
 $app->post('/gump/', 'testGump');
 $app->post('/login/','login');
 $app->post('/logoff/', 'logoff');
-
-
-//shifts
-$app->post('/openShift/', 'openShift');
-
-$app->get('/folios/', 'getFolios');
 
 //route functions
 
@@ -306,14 +309,18 @@ function getCustomers(){
   print json_encode($cArr);
 }
 
-function getFolios(){
-    $folios = array();
-    $iFolio = array();
-    $iFolio['id'] = 123;
-    $iFolio['date'] = "2018-01-27";
-    $iFolio['reservation'] = 789;
-    array_push($folios, $iFolio);
-    print json_encode($folios);
+function getFolio($id){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $folio = new Folio($id);
+  $response['folio'] = (array)$folio;
+  //TODO authenticate user
+
+  
+
+  print json_encode($response);
 }
 
 function getReservation($id){
@@ -349,6 +356,51 @@ function getReservations () {
     $response['reservations'] = $arr;
 
     print json_encode($arr);
+}
+
+function getSalesItems(){
+  $response = array();
+  $pdo = DataConnector::getConnection();
+  //first get the sales groups . . .
+  $stmt = $pdo->prepare("SELECT * FROM sales_item_groups ORDER BY `order` ASC");
+  $stmt->execute();
+  $groupsArr = array();
+  while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
+    $itemArr = array();
+    $itemArr['id'] = $obj->id;
+    $itemArr['order'] = $obj->order;
+    $itemArr['title'] = $obj->title;
+    $groupsArr[$obj->id] = $itemArr;
+  };
+  $response['sales_items_groups'] = $groupsArr;
+  //now iterate through and get the sales items
+  $stmt =$pdo->prepare("SELECT * FROM sales_items ORDER BY group_order ASC");
+  $stmt->execute();
+  $itemsArr = array();
+  while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
+    $itArr = array();
+    $itArr['id'] = $obj->id;
+    $itArr['group'] = $obj->group;
+    $itArr['group_order'] = $obj->group_order;
+    $itArr['title'] = $obj->title;
+    $itArr['is_fixed_price'] = $obj->is_fixed_price;
+    $itArr['price'] = $obj->price;
+    $itArr['tax_type'] = $obj->tax_type;
+    array_push($itemsArr, $itArr);
+  };
+  $response['sales_items'] = $itemsArr;
+  //now iterate through groups, then add items as subarray as appropriate . . . 
+  foreach( $groupsArr as $group_id => $group ){
+    $groupsArr[$group_id]['groups'] = array();
+    foreach( $itemsArr as $sales_item ){
+      if($sales_item['group'] == $group_id){
+       array_push( $groupsArr[$group_id]['groups'], $sales_item );
+      };
+    }
+  }
+  //tmp
+  $response['items_by_group'] = $groupsArr;
+  print json_encode($response);
 }
 
 function getSelectGroups(){

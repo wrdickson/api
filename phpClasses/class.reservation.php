@@ -17,7 +17,7 @@ Class Reservation{
   public function __construct($id){
     $pdo = DataConnector::getConnection();
     $stmt = $pdo->prepare("SELECT * FROM reservations WHERE id = :id");
-    $stmt->bindParam(":id",$id,PDO::PARAM_INT);
+    $stmt->bindParam(":id", $id, PDO::PARAM_INT);
     $stmt->execute();
     while($obj = $stmt->fetch(PDO::FETCH_OBJ)){
       $this->id = $obj->id;

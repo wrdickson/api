@@ -22,13 +22,39 @@ Class Folio{
       
     }
     //second, get the sales (charges)
-    
+    $stmt = $pdo->prepare("SELECT * FROM sales WHERE folio = :id");
+    $stmt->bindParam(":id",$id,PDO::PARAM_INT);
+    $sales = array();
+    $stmt->execute();
+    while($obj = $stmt->fetch(PDO::FETCH_OBJ)){
+      $sale = array();
+      $sale['id'] = $obj->id;
+      $sale['sale_date'] = $obj->sale_date;
+      $sale['tax_type'] = $obj->tax_type;
+      $sale['tax_type_title'] = $obj->tax_type_title;
+      $sale['tax_rate'] = $obj->tax_rate;
+      $sale['sales_item'] = $obj->sales_item;
+      $sale['sales_item_title'] = $obj->sales_item_title;
+      $sale['net'] = $obj->net;
+      $sale['tax'] = $obj->tax;
+      $sale['total'] = $obj->total;
+      $sale['by'] = $obj->by;
+      $sale['folio'] = $obj->folio;
+      $sale['shift'] = $obj->shift;
+      array_push($sales, $sale);
+    }   
+    $this->sales = $sales;
+  }
+
+  public function get_id(){
+    return $this->id;
   }
   
   public function to_array(){
     $arr = array();
     $arr['id'] = $this->id;
     $arr['customer'] = $this->customer;
+    $arr['reservatio'] = $this->reservation;
     return $arr;
   }
 }
