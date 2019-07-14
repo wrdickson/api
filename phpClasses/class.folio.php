@@ -44,6 +44,9 @@ Class Folio{
       array_push($sales, $sale);
     }   
     $this->sales = $sales;
+
+    //payments
+    $this->payments = array();
   }
 
   public function get_id(){

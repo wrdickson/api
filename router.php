@@ -80,6 +80,7 @@ function addReservation () {
     $app = \Slim\Slim::getInstance();
     $response = array();
     $params = json_decode($app->request->getBody(), true);
+    $response['params'] = $params;
     //TODO validate user . . . 
     $user = $params['user'];
     //TODO validate reservation . . .
@@ -368,7 +369,7 @@ function getSalesItems(){
   while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
     $itemArr = array();
     $itemArr['id'] = $obj->id;
-    $itemArr['order'] = $obj->order;
+    $itemArr['group_order'] = $obj->group_order;
     $itemArr['title'] = $obj->title;
     $groupsArr[$obj->id] = $itemArr;
   };
@@ -380,8 +381,8 @@ function getSalesItems(){
   while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
     $itArr = array();
     $itArr['id'] = $obj->id;
-    $itArr['group'] = $obj->group;
-    $itArr['group_order'] = $obj->group_order;
+    $itArr['sales_group'] = $obj->sales_group;
+    $itArr['sales_group_order'] = $obj->sales_group_order;
     $itArr['title'] = $obj->title;
     $itArr['is_fixed_price'] = $obj->is_fixed_price;
     $itArr['price'] = $obj->price;
@@ -393,7 +394,7 @@ function getSalesItems(){
   foreach( $groupsArr as $group_id => $group ){
     $groupsArr[$group_id]['groups'] = array();
     foreach( $itemsArr as $sales_item ){
-      if($sales_item['group'] == $group_id){
+      if($sales_item['sales_group'] == $group_id){
        array_push( $groupsArr[$group_id]['groups'], $sales_item );
       };
     }

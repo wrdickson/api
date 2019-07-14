@@ -71,7 +71,7 @@ Class Customer {
   
   public static function getCustomers(){
     $pdo = DataConnector::getConnection();
-    $stmt = $pdo->prepare("SELECT * FROM customers");
+    $stmt = $pdo->prepare("SELECT * FROM customers ORDER BY lastName ASC");
     $stmt->bindParam(":id",$id,PDO::PARAM_INT);
     $stmt->execute();
     $cArr = array();
