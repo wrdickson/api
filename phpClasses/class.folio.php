@@ -13,7 +13,7 @@ Class Folio{
     $pdo = DataConnector::getConnection();
     //first get the basics: id, customer, reservation
     $stmt = $pdo->prepare("SELECT * FROM folios WHERE id = :id");
-    $stmt->bindParam(":id",$id,PDO::PARAM_INT);
+    $stmt->bindParam(":id", $id, PDO::PARAM_INT);
     $stmt->execute();
     while($obj = $stmt->fetch(PDO::FETCH_OBJ)){
       $this->id = $obj->id;
@@ -57,7 +57,9 @@ Class Folio{
     $arr = array();
     $arr['id'] = $this->id;
     $arr['customer'] = $this->customer;
-    $arr['reservatio'] = $this->reservation;
+    $arr['reservation'] = $this->reservation;
+    $arr['sales'] = $this->sales;
+    $arr['payments'] = $this->payments;
     return $arr;
   }
 }

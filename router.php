@@ -316,7 +316,7 @@ function getFolio($id){
   $params = json_decode($app->request->getBody(), true);
   $response['params'] = $params;
   $folio = new Folio($id);
-  $response['folio'] = (array)$folio;
+  $response['folio'] = $folio->to_array();
   //TODO authenticate user
 
   
