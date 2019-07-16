@@ -59,6 +59,10 @@ $app->get('/reservations/', 'getReservations');
 $app->post('/reservations/', 'addReservation');
 $app->post('/reservationNotes/:id', 'addReservationNote');
 
+//sales
+$app->get('/sales/:id', 'getSalesByFolioId');
+
+
 //sales items
 $app->get('/sales-items/', 'getSalesItems');
 
@@ -359,6 +363,15 @@ function getReservations () {
     print json_encode($arr);
 }
 
+function getSalesByFolioId( $id ){
+  
+  $response = array();
+  $response['folioId'] = $id;
+  $response['sales'] = Sale::loadSalesByFolioId($id);
+
+  print json_encode($response);
+}
+
 function getSalesItems(){
   $response = array();
   $pdo = DataConnector::getConnection();
@@ -370,7 +383,7 @@ function getSalesItems(){
     $itemArr = array();
     $itemArr['id'] = $obj->id;
     $itemArr['group_order'] = $obj->group_order;
-    $itemArr['title'] = $obj->title;
+    $itemArr['sales_item_title'] = $obj->title;
     $groupsArr[$obj->id] = $itemArr;
   };
   $response['sales_items_groups'] = $groupsArr;

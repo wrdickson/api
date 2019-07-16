@@ -3,7 +3,7 @@ Class Sales_Item {
   public $id;
   public $sales_group;
   public $sales_group_order;
-  public $title;
+  public $sales_item_title;
   public $is_fixed_price;
   public $price;
   public $tax_type;
@@ -15,9 +15,9 @@ Class Sales_Item {
     $stmt->execute();
     while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
       $this->id = $obj->id;
-      $this->sales_group = $obj->group;
-      $this->sales_group_order = $obj->group_order;
-      $this->title = $obj->title;
+      $this->sales_group = $obj->sales_group;
+      $this->sales_group_order = $obj->sales_group_order;
+      $this->sales_item_title = $obj->sales_item_title;
       $this->is_fixed_price = $obj->is_fixed_price;
       $this->price = $obj->price;
       $this->tax_type = $obj->tax_type;
