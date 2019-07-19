@@ -20,7 +20,8 @@ Class Sale {
   public static function loadSalesByFolioId( $folioId ){
     $response = array();
     $pdo = DataConnector::getConnection();
-    $stmt =$pdo->prepare("SELECT sales.id, sales.sale_date, sales.tax_type, tax_types.tax_title, tax_types.tax_rate, sales.sales_item, sales_items.sales_item_title,  sales.net, sales.tax, sales.total, sales.by, sales.shift FROM (( sales INNER JOIN tax_types ON sales.tax_type = tax_types.id) INNER JOIN sales_items ON sales.sales_item = sales_items.id) WHERE sales.folio = :folio_id ORDER BY sales.sale_date ASC");
+    //$stmt =$pdo->prepare("SELECT sales.id, sales.sale_date, sales.tax_type, tax_types.tax_title, tax_types.tax_rate, sales.sales_item, sales_items.sales_item_title,  sales.net, sales.tax, sales.total, sales.by, sales.shift FROM (( sales INNER JOIN tax_types ON sales.tax_type = tax_types.id) INNER JOIN sales_items ON sales.sales_item = sales_items.id) WHERE sales.folio = :folio_id ORDER BY sales.sale_date ASC");
+    $stmt =$pdo->prepare("SELECT sales.id, sales.sale_date, sales.tax_type, tax_types.tax_title, tax_types.tax_rate, sales.sales_item, sales_items.sales_item_title,  sales.net, sales.tax, sales.total, sales.by, users.username, sales.shift FROM ((( sales INNER JOIN tax_types ON sales.tax_type = tax_types.id) INNER JOIN sales_items ON sales.sales_item = sales_items.id) INNER JOIN users ON sales.by = users.id) WHERE sales.folio = :folio_id ORDER BY sales.sale_date ASC");
     $stmt->bindParam(':folio_id', $folioId, PDO::PARAM_INT);
     $response['execute'] = $stmt->execute();
     $salesArray = array();
@@ -37,6 +38,7 @@ Class Sale {
       $iArr['tax'] = $obj->tax;
       $iArr['total'] = $obj->total;
       $iArr['by'] = $obj->by;
+      $iArr['username'] = $obj->username;
       $iArr['shift'] = $obj->shift;
       array_push($salesArray, $iArr);
     }

@@ -96,8 +96,8 @@ Class Reservation{
         $stmt = $pdo->prepare("SELECT * FROM reservations WHERE id = :id");
         $stmt->bindParam(":id",$id,PDO::PARAM_INT);
         $stmt->execute();
+        $r = array();
         while($obj = $stmt->fetch(PDO::FETCH_OBJ)){
-          $r = array();
           $r['id'] = $obj->id;
           $r['space_code'] = $obj->space_code;
           $r['space_id'] = $obj->space_id;
@@ -113,6 +113,9 @@ Class Reservation{
           $iCustomer = new Customer($obj->customer);
           $r['customer_obj'] = $iCustomer->dumpArray();
         }
+        $folio = new Folio( $r['folio'] );
+        $r['folio_obj'] = $folio->to_array();
+
         return $r;
   }
 }

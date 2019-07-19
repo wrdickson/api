@@ -89,6 +89,8 @@ function addReservation () {
     $user = $params['user'];
     //TODO validate reservation . . .
     $reservation = $params['reservation'];
+    //TODO create a folio
+    
     
     $pdo = DataConnector::getConnection();
     $stmt = $pdo->prepare("INSERT INTO reservations (space_id, space_code, checkin, checkout, customer, people, beds, folio, status, notes, history) VALUES (:space_id, :space_code, :checkin, :checkout, :customer, :people, :beds, '0', '1', '[]', '[]')");
@@ -376,19 +378,19 @@ function getSalesItems(){
   $response = array();
   $pdo = DataConnector::getConnection();
   //first get the sales groups . . .
-  $stmt = $pdo->prepare("SELECT * FROM sales_item_groups ORDER BY `order` ASC");
+  $stmt = $pdo->prepare("SELECT * FROM sales_item_groups ORDER BY group_order ASC");
   $stmt->execute();
   $groupsArr = array();
   while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
     $itemArr = array();
     $itemArr['id'] = $obj->id;
     $itemArr['group_order'] = $obj->group_order;
-    $itemArr['sales_item_title'] = $obj->title;
+    $itemArr['sales_item_title'] = $obj->sales_item_title;
     $groupsArr[$obj->id] = $itemArr;
   };
   $response['sales_items_groups'] = $groupsArr;
   //now iterate through and get the sales items
-  $stmt =$pdo->prepare("SELECT * FROM sales_items ORDER BY group_order ASC");
+  $stmt =$pdo->prepare("SELECT * FROM sales_items ORDER BY sales_group_order ASC");
   $stmt->execute();
   $itemsArr = array();
   while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
@@ -396,7 +398,7 @@ function getSalesItems(){
     $itArr['id'] = $obj->id;
     $itArr['sales_group'] = $obj->sales_group;
     $itArr['sales_group_order'] = $obj->sales_group_order;
-    $itArr['title'] = $obj->title;
+    $itArr['sales_item_title'] = $obj->sales_item_title;
     $itArr['is_fixed_price'] = $obj->is_fixed_price;
     $itArr['price'] = $obj->price;
     $itArr['tax_type'] = $obj->tax_type;
