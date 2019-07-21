@@ -15,7 +15,10 @@ require "phpClasses/class.folio.php";
 require "phpClasses/class.shift.php";
 require "phpClasses/class.sales_item.php";
 require "phpClasses/class.sale.php";
+require "phpClasses/class.reservation_history.php";
 
+//set the server timezone
+date_default_timezone_set( DEFAULT_TIMEZONE );
 
 GUMP::add_validator("is_object", function($field, $input, $param = 'something') {
     return is_object($input[$field]);
@@ -29,10 +32,7 @@ GUMP::set_error_message("is_object", "Is not an object");
 $app = new \Slim\Slim();
 
 //route the requests
-//$app->get('/checkAvailability/:start/:end/:spaceId', 'checkAvailability');
-//$app->get('/checkAvailability/', 'checkAvailability');
 $app->get('/checkAvailabilityByDates/:start/:end', 'checkAvailabilityByDates');
-//$app->get('/checkUpdateAvailability/', 'checkUpdateAvailability');
 $app->post('/checkAvailability/','checkAvailability');
 
 //customers
@@ -89,10 +89,11 @@ function addReservation () {
     $user = $params['user'];
     //TODO validate reservation . . .
     $reservation = $params['reservation'];
-    //TODO create a folio
-    
     
     $pdo = DataConnector::getConnection();
+
+    //TODO make this a transaction
+    //create the reservations
     $stmt = $pdo->prepare("INSERT INTO reservations (space_id, space_code, checkin, checkout, customer, people, beds, folio, status, notes, history) VALUES (:space_id, :space_code, :checkin, :checkout, :customer, :people, :beds, '0', '1', '[]', '[]')");
     $stmt->bindParam(":space_id", $reservation['space_id'], PDO::PARAM_STR);
     $stmt->bindParam(":space_code", $reservation['space_code'], PDO::PARAM_STR);
@@ -104,7 +105,44 @@ function addReservation () {
     $response['stmt'] = $stmt;
     $response['execute'] = $stmt->execute();
     $response['errorInfo'] = $stmt->errorInfo();
-    $response['insertId']= $pdo->lastInsertId(); 
+    $response['insertId']= $pdo->lastInsertId();
+
+
+    //$pdo = null; 
+
+    //create a folio
+    //$pdo = DataConnector::getConnection();
+    $stmt2 = $pdo->prepare('INSERT INTO folios ( customer, reservation ) VALUES (:custId, :resId)');
+    $stmt2->bindParam(':custId', $reservation['customer'], PDO::PARAM_INT);
+    $stmt2->bindParam(':resId', $response['insertId']);
+    $response['folioExecute'] = $stmt2->execute();
+    $response['folioId'] = $pdo->lastInsertId();
+    $response['folioError'] = $stmt2->errorInfo();
+    //$pdo = null;
+
+    //now update the reservation with the folio #
+    //$pdo = DataConnector::getConnection();
+    $stmt3 = $pdo->prepare("UPDATE reservations SET folio = :folioId WHERE id = :resId");
+    $stmt3->bindParam(':folioId', $response['folioId'], PDO::PARAM_INT);
+    $stmt3->bindParam(':resId', $response['insertId'], PDO::PARAM_INT);
+    $response['updateResWithFolio'] = $stmt3->execute();
+
+    //create a record in reshistory
+    $stmt4 = $pdo->prepare("INSERT INTO reshistory ( res_id, history ) VALUES ( :res_id, '[]' )");
+    $stmt4->bindParam(':res_id', $response['insertId'], PDO::PARAM_INT);
+    $response['historyRecordCreated'] = $stmt4->execute();
+    
+    //instantiate the reservation
+    $iRes = new Reservation( $response['insertId'] );
+    $response['historyUpdated'] = $iRes->add_history('Reservation Created', $params['user']['userId'], $params['user']['username'] );
+
+    //create a record for reshistory
+    $iResHistory = new Reservation_History( $response['insertId'] );
+    $response['resHist init'] = $iResHistory->to_array();
+    //update history with this reservation
+    $iResHistory->add_history_snapshot( $iRes->to_array(), $params['user']['userId'], $params['user']['username'] );
+    $response['resHist after add'] = $iResHistory->to_array();
+    
 
     print json_encode($response);
 }
@@ -640,6 +678,18 @@ function updateReservation($id){
   $params = json_decode($app->request->getBody(), true);
   $response['params'] = $params;
   $response['execute'] = Reservation::update_from_params( $params['reservation']['id'], $params['reservation']['space_id'], $params['reservation']['space_code'], $params['reservation']['checkin'], $params['reservation']['checkout'], $params['reservation']['people'], $params['reservation']['beds'], $params['reservation']['folio'], $params['reservation']['status'], json_encode($params['reservation']['history']), json_encode($params['reservation']['notes']), $params['reservation']['customer'] );
+
+  //now add a history note
+  $iReservation = new Reservation( $params['reservation']['id'] );
+  $hText = "Reservation changed.";
+  $response['historyUpdated'] = $iReservation->add_history( $hText, $params['user']['userId'], $params['user']['username'] );
+
+  //instantiate reshistory
+  $iResHistory = new Reservation_History( $id );
+  //update history with this reservation
+  $iResHistory->add_history_snapshot( $iReservation->to_array(), $params['user']['userId'], $params['user']['username'] );
+  
+
   print json_encode($response);
 }
 

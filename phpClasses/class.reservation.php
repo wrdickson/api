@@ -44,6 +44,36 @@ Class Reservation{
     return $this->notes;
   }
 
+  public function add_history( $history_text, $user_id, $user_name ){
+    $pdo = DataConnector::getConnection();
+    $historyArr = array();
+    $historyArr['date'] = date('Y-m-j H:i:s');
+    $historyArr['userId'] = $user_id;
+    $historyArr['username'] = $user_name;
+    $historyArr['text'] = $history_text;
+    $pdo = DataConnector::getConnection();
+    $arrpush = array_push($this->history, $historyArr);
+    $updateSuccess = $this->update_to_db();
+  }
+
+  public function to_array(){
+    $arr = array();
+    $arr['id'] = $this->id;
+    $arr['space_id'] = $this->space_id;
+    $arr['space_code'] = $this->space_code;
+    $arr['checkin'] = $this->checkin;
+    $arr['checkout'] = $this->checkout;
+    $arr['people'] = $this->people;
+    $arr['beds'] = $this->beds;
+    $arr['folio'] = $this->folio;
+    $arr['status'] = $this->status;
+    $arr['history'] = $this->history;
+    $arr['notes'] = $this->notes;
+    $arr['customer'] = $this->customer;
+    $arr['customer_obj'] = $this->customer_obj;
+    return $arr;
+  }
+
   public function update_to_db(){
     $historyJson = json_encode($this->history);
     $notesJson = json_encode($this->notes);
