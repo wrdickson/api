@@ -8,6 +8,7 @@ Class Reservation{
   public $people;
   public $beds;
   public $folio;
+  public $folio_obj;
   public $status;
   public $history;
   public $notes;
@@ -28,6 +29,8 @@ Class Reservation{
       $this->people = $obj->people;
       $this->beds = $obj->beds;
       $this->folio = $obj->folio;
+      $iFolio = new Folio( $obj->folio );
+      $this->folio_obj = $iFolio->to_array();
       $this->status = $obj->status;
       $this->history = json_decode($obj->history);
       $this->notes = json_decode($obj->notes);
@@ -36,6 +39,7 @@ Class Reservation{
       $this->customer_obj = $iCustomer->dumpArray();
     }
   }
+
   // note is a assoc array 
    public function addNote( $note ){
     $arr = $this->notes;
@@ -56,6 +60,16 @@ Class Reservation{
     $updateSuccess = $this->update_to_db();
   }
 
+  public function checkin(){
+    $this->status = 3;
+    return $this->update_to_db();
+  }
+
+  public function checkout(){
+    $this->status = 4;
+    return $this->update_to_db();
+  }
+
   public function to_array(){
     $arr = array();
     $arr['id'] = $this->id;
@@ -66,6 +80,7 @@ Class Reservation{
     $arr['people'] = $this->people;
     $arr['beds'] = $this->beds;
     $arr['folio'] = $this->folio;
+    $arr['folio_obj'] = $this->folio_obj;
     $arr['status'] = $this->status;
     $arr['history'] = $this->history;
     $arr['notes'] = $this->notes;
@@ -78,7 +93,7 @@ Class Reservation{
     $historyJson = json_encode($this->history);
     $notesJson = json_encode($this->notes);
     $pdo2 = DataConnector::getConnection();
-    $stmt = $pdo2->prepare("UPDATE reservations SET space_id = :si, space_code = :si, checkin = :ci, checkout = :co, people = :pe, beds = :be, folio = :fo, status = :st, history = :hi, notes = :nt, customer = :cu WHERE id = :id");
+    $stmt = $pdo2->prepare("UPDATE reservations SET space_id = :si, space_code = :sc, checkin = :ci, checkout = :co, people = :pe, beds = :be, folio = :fo, status = :st, history = :hi, notes = :nt, customer = :cu WHERE id = :id");
     $stmt->bindParam(":si", $this->space_id, PDO::PARAM_INT);
     $stmt->bindParam(":sc", $this->space_code, PDO::PARAM_STR);
     $stmt->bindParam(":ci", $this->checkin, PDO::PARAM_STR);
@@ -98,7 +113,7 @@ Class Reservation{
 
   public static function update_from_params( $resId, $space_id, $space_code, $checkin, $checkout, $people, $beds, $folio, $status, $history, $notes, $customer){
     $pdo = DataConnector::getConnection();
-    $stmt = $pdo->prepare("UPDATE reservations SET space_id = :si, space_code = :si, checkin = :ci, checkout = :co, people = :pe, beds = :be, folio = :fo, status=:st, history = :hi, notes = :nt, customer = :cu WHERE id = :id");
+    $stmt = $pdo->prepare("UPDATE reservations SET space_id = :si, space_code = :sc, checkin = :ci, checkout = :co, people = :pe, beds = :be, folio = :fo, status=:st, history = :hi, notes = :nt, customer = :cu WHERE id = :id");
     $stmt->bindParam(":si", $space_id, PDO::PARAM_INT);
     $stmt->bindParam(":sc", $space_code, PDO::PARAM_STR);
     $stmt->bindParam(":ci", $checkin, PDO::PARAM_STR);

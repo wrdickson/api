@@ -23,6 +23,7 @@ Class Folio{
     }
     //second, get the sales (charges)
     $this->sales = Sale::loadSalesByFolioId($id);
+    //$this->sales = json_decode( '[{"a":"1"}]' );
 
     //payments
     $this->payments = array();

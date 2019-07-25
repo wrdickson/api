@@ -13,15 +13,14 @@ Class Sale {
   private $net;
   private $tax;
   private $total;
-  private $by;
+  private $sold_by;
   private $folio;
   private $shift;
 
   public static function loadSalesByFolioId( $folioId ){
     $response = array();
     $pdo = DataConnector::getConnection();
-    //$stmt =$pdo->prepare("SELECT sales.id, sales.sale_date, sales.tax_type, tax_types.tax_title, tax_types.tax_rate, sales.sales_item, sales_items.sales_item_title,  sales.net, sales.tax, sales.total, sales.by, sales.shift FROM (( sales INNER JOIN tax_types ON sales.tax_type = tax_types.id) INNER JOIN sales_items ON sales.sales_item = sales_items.id) WHERE sales.folio = :folio_id ORDER BY sales.sale_date ASC");
-    $stmt =$pdo->prepare("SELECT sales.id, sales.sale_date, sales.tax_type, tax_types.tax_title, tax_types.tax_rate, sales.sales_item, sales_items.sales_item_title,  sales.net, sales.tax, sales.total, sales.by, users.username, sales.shift FROM ((( sales INNER JOIN tax_types ON sales.tax_type = tax_types.id) INNER JOIN sales_items ON sales.sales_item = sales_items.id) INNER JOIN users ON sales.by = users.id) WHERE sales.folio = :folio_id ORDER BY sales.sale_date ASC");
+    $stmt =$pdo->prepare("SELECT sales.id, sales.sale_date, sales.tax_type, tax_types.tax_title, tax_types.tax_rate, sales.sales_item, sales_items.sales_item_title, sales.net, sales.tax, sales.total, sales.sold_by, users.username, sales.shift FROM ((( sales INNER JOIN tax_types ON sales.tax_type = tax_types.id) INNER JOIN sales_items ON sales.sales_item = sales_items.id) INNER JOIN users ON sales.sold_by = users.id) WHERE sales.folio = :folio_id ORDER BY sales.sale_date ASC");
     $stmt->bindParam(':folio_id', $folioId, PDO::PARAM_INT);
     $response['execute'] = $stmt->execute();
     $salesArray = array();
@@ -37,7 +36,7 @@ Class Sale {
       $iArr['net'] = $obj->net;
       $iArr['tax'] = $obj->tax;
       $iArr['total'] = $obj->total;
-      $iArr['by'] = $obj->by;
+      $iArr['sold_by'] = $obj->sold_by;
       $iArr['username'] = $obj->username;
       $iArr['shift'] = $obj->shift;
       array_push($salesArray, $iArr);
@@ -45,6 +44,21 @@ Class Sale {
     $response['sales'] = $salesArray;
     //return $response;
     return $salesArray;
+  }
+
+  public static function post_sale(  $tax_type, $sales_item, $net, $tax, $total, $sold_by, $folio, $shift ){
+    $pdo = DataConnector::getConnection();
+    $stmt = $pdo->prepare("INSERT INTO sales ( sale_date, tax_type, sales_item, net, tax, total, sold_by, folio, shift ) VALUES (  NOW(), :tt, :si, :n, :ta, :ttl, :sb, :f, :s )");
+    $stmt->bindParam(':tt', $tax_type, PDO::PARAM_INT);
+    $stmt->bindParam(':si', $sales_item, PDO::PARAM_INT);
+    $stmt->bindParam(':n', $net, PDO::PARAM_STR);
+    $stmt->bindParam(':ta', $tax, PDO::PARAM_STR);
+    $stmt->bindParam(':ttl', $total, PDO::PARAM_STR);
+    $stmt->bindParam(':sb', $sold_by, PDO::PARAM_INT);
+    $stmt->bindParam(':f', $folio, PDO::PARAM_INT);
+    $stmt->bindParam(':s', $shift, PDO::PARAM_INT);
+    $success = $stmt->execute();
+    return $success;
   }
 
   public function __construct( $id ){

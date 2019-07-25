@@ -58,9 +58,13 @@ $app->put('/reservations/:id', 'updateReservation');
 $app->get('/reservations/', 'getReservations');
 $app->post('/reservations/', 'addReservation');
 $app->post('/reservationNotes/:id', 'addReservationNote');
+$app->put('/reservation/checkin/:id', 'checkinReservation');
+$app->put('/reservation/checkout/:id', 'checkoutReservation');
 
 //sales
 $app->get('/sales/:id', 'getSalesByFolioId');
+//:id is the folio id here
+$app->post('/sale/:id', 'postSale');
 
 
 //sales items
@@ -294,6 +298,30 @@ function checkAvailabilityByDates( $start,$end ){
   print json_encode($response);
 };
 
+function checkinReservation(){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  //TODO authenticate user
+
+  $iReservation = new Reservation( $params['resId'] );
+  $response['success'] = $iReservation->checkin();
+  print json_encode($response);
+}
+
+function checkoutReservation(){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  //TODO authenticate user
+
+  $iReservation = new Reservation( $params['resId'] );
+  $response['success'] = $iReservation->checkout();
+  print json_encode($response);
+}
+
 function checkUpdateAvailability(){
   $app = \Slim\Slim::getInstance();
   $response = array();
@@ -369,7 +397,9 @@ function getFolio($id){
 }
 
 function getReservation($id){
-    print json_encode(Reservation::getReservation($id));
+    $iReservation = new Reservation( $id );
+
+    print json_encode( $iReservation->to_array() );
 }
 
 function getReservations () {
@@ -591,6 +621,18 @@ function openShift(){
     $newShift = new Shift($newShiftId);
     $response['shift'] = $newShift->to_array();
     print json_encode($response);
+}
+
+function postSale($folioId){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  //TODO authenticate user 
+  //TODO authenticate sale
+  $post_success = Sale::post_sale( $params['sale_obj']['tax_type'], $params['sale_obj']['sales_item'], $params['sale_obj']['net'], $params['sale_obj']['tax'], $params['sale_obj']['total'], $params['sale_obj']['sold_by'], $folioId, $params['sale_obj']['shift'] );
+  $response['postSuccess'] = $post_success;
+  print json_encode( $response );
 }
 
 function testGump(){
