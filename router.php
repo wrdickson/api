@@ -78,7 +78,21 @@ $app->post('/gump/', 'testGump');
 $app->post('/login/','login');
 $app->post('/logoff/', 'logoff');
 
+
+//debug temp
+$app->post('/headerTest/', 'headerTest');
+
 //route functions
+
+function headerTest(){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $something = $app->request->headers->get('X-Something-Something');
+  $response['someting'] = $something;
+  $response['params'] = $params;
+  print json_encode($response);
+}
 
 function updateSomething($id){
   print $id;
