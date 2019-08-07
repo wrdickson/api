@@ -16,6 +16,8 @@ require "phpClasses/class.shift.php";
 require "phpClasses/class.sales_item.php";
 require "phpClasses/class.sale.php";
 require "phpClasses/class.reservation_history.php";
+require "phpClasses/class.sale_type.php";
+require "phpClasses/class.tax_type.php";
 
 //set the server timezone
 date_default_timezone_set( DEFAULT_TIMEZONE );
@@ -70,6 +72,11 @@ $app->post('/sale/:id', 'postSale');
 //sales items
 $app->get('/sales-items/', 'getSalesItems');
 
+//sale types
+$app->get('/sale-types/', 'getSaleTypes');
+$app->put('/sale-types/:id', 'update_sale_type');
+$app->post('/sale-types/', 'add_sale_type');
+
 //shifts
 $app->get('/userShift/:id', 'getUserShift');
 $app->post('/openShift/', 'openShift');
@@ -77,6 +84,11 @@ $app->post('/openShift/', 'openShift');
 $app->post('/gump/', 'testGump');
 $app->post('/login/','login');
 $app->post('/logoff/', 'logoff');
+
+//tax types
+$app->get('/tax-types/', 'get_tax_types');
+$app->put('/tax-types/:id', 'update_tax_type');
+$app->post('/tax-types/', 'add_tax_type');
 
 
 //debug temp
@@ -186,6 +198,30 @@ function addReservationNote( $resId ){
 
 
   print json_encode($response);
+}
+
+function add_sale_type(){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  //TODO validate newSaleType
+  //TODO authenticate user
+  $response['execute'] = Sale_Type::add_sale_type( $params['newSaleType']['title'], $params['newSaleType']['tax_type'], $params['newSaleType']['is_current'], $params['newSaleType']['display_order']);
+  //return an array of new sale types 
+  $response['sale_types'] = Sale_Type::get_sale_types();
+  print json_encode($response);
+}
+
+function add_tax_type(){
+  //TODO authenticate user and validate params
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $response['execute'] = Tax_Type::add_tax_type( $params['tax_type']['tax_title'], $params['tax_type']['tax_rate'], $params['tax_type']['is_current'], $params['tax_type']['display_order']);
+  $response['tax_types'] = Tax_Type::get_tax_types();
+  print json_encode( $response );
 }
 
 function checkAvailability( ){
@@ -501,6 +537,12 @@ function getSalesItems(){
   print json_encode($response);
 }
 
+function getSaleTypes(){
+  $response = array();
+  $response['sale_types'] = Sale_Type::get_sale_types();
+  print json_encode($response);
+}
+
 function getSelectGroups(){
     $app = \Slim\Slim::getInstance();
     $pdo = DataConnector::getConnection();
@@ -572,6 +614,12 @@ function getSpaces() {
     $response['session'] = $_SESSION;
 
     print json_encode($response);
+}
+
+function get_tax_types(){
+  $response = array();
+  $response['tax_types'] = Tax_Type::get_tax_types();
+  print json_encode( $response );
 }
 
 function getTypes(){
@@ -747,6 +795,30 @@ function updateReservation($id){
   
 
   print json_encode($response);
+}
+
+function update_sale_type( $sale_type_id ){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  //TODO authenticate user
+  //update db . . .
+  $response['update'] = Sale_Type::update_from_params( $sale_type_id, $params['saleType']['title'], $params['saleType']['is_current'], $params['saleType']['tax_type'], $params['saleType']['display_order']);
+  //return an array of new sale types 
+  $response['sale_types'] = Sale_Type::get_sale_types();
+  print json_encode( $response );
+}
+
+function update_tax_type( $tax_type_id ){
+  //TODO authenticate user and validate params
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $response['update'] = Tax_Type::update_from_params( $tax_type_id, $params['tax_type']['tax_title'], $params['tax_type']['tax_rate'], $params['tax_type']['is_current'], $params['tax_type']['display_order']);
+  $response['tax_types'] = Tax_Type::get_tax_types();
+  print json_encode( $response );
 }
 
 $app->run();
