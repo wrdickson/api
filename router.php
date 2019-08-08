@@ -18,6 +18,7 @@ require "phpClasses/class.sale.php";
 require "phpClasses/class.reservation_history.php";
 require "phpClasses/class.sale_type.php";
 require "phpClasses/class.tax_type.php";
+require "phpClasses/class.sales_group.php";
 
 //set the server timezone
 date_default_timezone_set( DEFAULT_TIMEZONE );
@@ -68,9 +69,14 @@ $app->get('/sales/:id', 'getSalesByFolioId');
 //:id is the folio id here
 $app->post('/sale/:id', 'postSale');
 
+//sales groups
+$app->get('/sales-groups/', 'get_sales_groups');
+
 
 //sales items
 $app->get('/sales-items/', 'getSalesItems');
+$app->put('/sales-items/:id', 'update_sales_item');
+$app->post('/sales-items/', 'add_sales_item');
 
 //sale types
 $app->get('/sale-types/', 'getSaleTypes');
@@ -211,6 +217,16 @@ function add_sale_type(){
   //return an array of new sale types 
   $response['sale_types'] = Sale_Type::get_sale_types();
   print json_encode($response);
+}
+
+function add_sales_item(){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $response['execute'] = Sales_Item::add_sales_item( $params['sales_item']['sales_group'], $params['sales_item']['group_order'], $params['sales_item']['sales_item_code'], $params['sales_item']['sales_item_title'], $params['sales_item']['is_fixed_price'], $params['sales_item']['price'], $params['sales_item']['tax_type'] );
+  $response['sales_items'] = Sales_Item::get_sales_items();
+  print json_encode( $response );
 }
 
 function add_tax_type(){
@@ -492,55 +508,22 @@ function getSalesByFolioId( $id ){
   print json_encode($response);
 }
 
+function get_sales_groups(){
+  $response = array();
+  $response['sales_groups'] = Sales_Group::get_sales_groups();
+  print json_encode( $response );
+}
+
 function getSalesItems(){
   $response = array();
-  $pdo = DataConnector::getConnection();
-  //first get the sales groups . . .
-  $stmt = $pdo->prepare("SELECT * FROM sales_item_groups ORDER BY group_order ASC");
-  $stmt->execute();
-  $groupsArr = array();
-  while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
-    $itemArr = array();
-    $itemArr['id'] = $obj->id;
-    $itemArr['group_order'] = $obj->group_order;
-    $itemArr['sales_item_title'] = $obj->sales_item_title;
-    $groupsArr[$obj->id] = $itemArr;
-  };
-  $response['sales_items_groups'] = $groupsArr;
-  //now iterate through and get the sales items
-  $stmt =$pdo->prepare("SELECT * FROM sales_items ORDER BY sales_group_order ASC");
-  $stmt->execute();
-  $itemsArr = array();
-  while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
-    $itArr = array();
-    $itArr['id'] = $obj->id;
-    $itArr['sales_group'] = $obj->sales_group;
-    $itArr['sales_group_order'] = $obj->sales_group_order;
-    $itArr['sales_item_title'] = $obj->sales_item_title;
-    $itArr['is_fixed_price'] = $obj->is_fixed_price;
-    $itArr['price'] = $obj->price;
-    $itArr['tax_type'] = $obj->tax_type;
-    array_push($itemsArr, $itArr);
-  };
-  $response['sales_items'] = $itemsArr;
-  //now iterate through groups, then add items as subarray as appropriate . . . 
-  foreach( $groupsArr as $group_id => $group ){
-    $groupsArr[$group_id]['groups'] = array();
-    foreach( $itemsArr as $sales_item ){
-      if($sales_item['sales_group'] == $group_id){
-       array_push( $groupsArr[$group_id]['groups'], $sales_item );
-      };
-    }
-  }
-  //tmp
-  $response['items_by_group'] = $groupsArr;
-  print json_encode($response);
+  $response['sales_items'] = Sales_Item::get_sales_items();
+  print json_encode( $response );
 }
 
 function getSaleTypes(){
   $response = array();
   $response['sale_types'] = Sale_Type::get_sale_types();
-  print json_encode($response);
+  print json_encode( $response );
 }
 
 function getSelectGroups(){
@@ -692,7 +675,7 @@ function postSale($folioId){
   $response['params'] = $params;
   //TODO authenticate user 
   //TODO authenticate sale
-  $post_success = Sale::post_sale( $params['sale_obj']['tax_type'], $params['sale_obj']['sales_item'], $params['sale_obj']['net'], $params['sale_obj']['tax'], $params['sale_obj']['total'], $params['sale_obj']['sold_by'], $folioId, $params['sale_obj']['shift'] );
+  $post_success = Sale::post_sale( $params['sale_obj']['sales_item'], $params['sale_obj']['quantity'], $params['sale_obj']['net'], $params['sale_obj']['tax'], $params['sale_obj']['total'], $params['sale_obj']['sold_by'], $folioId, $params['sale_obj']['shift'], $params['sale_obj']['notes'] );
   $response['postSuccess'] = $post_success;
   print json_encode( $response );
 }
@@ -807,6 +790,18 @@ function update_sale_type( $sale_type_id ){
   $response['update'] = Sale_Type::update_from_params( $sale_type_id, $params['saleType']['title'], $params['saleType']['is_current'], $params['saleType']['tax_type'], $params['saleType']['display_order']);
   //return an array of new sale types 
   $response['sale_types'] = Sale_Type::get_sale_types();
+  print json_encode( $response );
+}
+
+function update_sales_item( $id ){
+  //TODO authenticate user and validate params
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $response['execute'] = Sales_Item::update_from_params($params['sales_item']['id'], $params['sales_item']['sales_group'], $params['sales_item']['group_order'], $params['sales_item']['sales_item_code'], $params['sales_item']['sales_item_title'], $params['sales_item']['is_fixed_price'], $params['sales_item']['price'], $params['sales_item']['tax_type']);
+  $response['sales_items'] = Sales_Item::get_sales_items(); 
+
   print json_encode( $response );
 }
 

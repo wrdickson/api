@@ -20,7 +20,7 @@ Class Sale {
   public static function loadSalesByFolioId( $folioId ){
     $response = array();
     $pdo = DataConnector::getConnection();
-    $stmt =$pdo->prepare("SELECT sales.id, sales.sale_date, sales.tax_type, tax_types.tax_title, tax_types.tax_rate, sales.sales_item, sales_items.sales_item_title, sales.net, sales.tax, sales.total, sales.sold_by, users.username, sales.shift FROM ((( sales INNER JOIN tax_types ON sales.tax_type = tax_types.id) INNER JOIN sales_items ON sales.sales_item = sales_items.id) INNER JOIN users ON sales.sold_by = users.id) WHERE sales.folio = :folio_id ORDER BY sales.sale_date ASC");
+    $stmt =$pdo->prepare("SELECT sales.id, sales.sale_date, tax_types.tax_title, tax_types.id AS 'tax_type', tax_types.tax_rate, sales.sales_item, sales_items.sales_item_title, sales.net, sales.tax, sales.total, sales.sold_by, users.username, sales.shift FROM ((( sales INNER JOIN sales_items ON sales.sales_item = sales_items.id )  INNER JOIN tax_types ON sales_items.tax_type = tax_types.id ) INNER JOIN users ON sales.sold_by = users.id) WHERE sales.folio = :folio_id ORDER BY sales.sale_date ASC");
     $stmt->bindParam(':folio_id', $folioId, PDO::PARAM_INT);
     $response['execute'] = $stmt->execute();
     $salesArray = array();
@@ -46,17 +46,19 @@ Class Sale {
     return $salesArray;
   }
 
-  public static function post_sale(  $tax_type, $sales_item, $net, $tax, $total, $sold_by, $folio, $shift ){
+  public static function post_sale(  $sales_item, $quantity, $net, $tax, $total, $sold_by, $folio, $shift, $notes ){
     $pdo = DataConnector::getConnection();
-    $stmt = $pdo->prepare("INSERT INTO sales ( sale_date, tax_type, sales_item, net, tax, total, sold_by, folio, shift ) VALUES (  NOW(), :tt, :si, :n, :ta, :ttl, :sb, :f, :s )");
-    $stmt->bindParam(':tt', $tax_type, PDO::PARAM_INT);
+    $notesJson = json_encode( $notes );
+    $stmt = $pdo->prepare("INSERT INTO sales ( sale_date, sales_item, sales_quantity, net, tax, total, sold_by, folio, shift, notes ) VALUES (  NOW(), :si, :qty, :net, :ta, :ttl, :sb, :f, :s, :n )");
     $stmt->bindParam(':si', $sales_item, PDO::PARAM_INT);
-    $stmt->bindParam(':n', $net, PDO::PARAM_STR);
+    $stmt->bindParam(':qty', $quantity, PDO::PARAM_INT);
+    $stmt->bindParam(':net', $net, PDO::PARAM_STR);
     $stmt->bindParam(':ta', $tax, PDO::PARAM_STR);
     $stmt->bindParam(':ttl', $total, PDO::PARAM_STR);
     $stmt->bindParam(':sb', $sold_by, PDO::PARAM_INT);
     $stmt->bindParam(':f', $folio, PDO::PARAM_INT);
     $stmt->bindParam(':s', $shift, PDO::PARAM_INT);
+    $stmt->bindParam(':n', $notesJson, PDO::PARAM_STR);
     $success = $stmt->execute();
     return $success;
   }
