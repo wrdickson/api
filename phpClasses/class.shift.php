@@ -36,12 +36,23 @@ Class Shift{
     $arr['end_date'] = $this->end_date;
     return $arr;
   }
+
+  public function get_payments(){
+    return Payment::get_payments_by_shift_id( $this->id );
+  }
+
+  public function get_sales(){
+    return Sale::get_sales_by_shift_id( $this->id );
+  }
   
   /*
   * static methods
   */
-  public static function close_shift( $shiftId, $datetime ){
-    
+  public function close_shift(){
+    //use 0/1 not true/false
+    $this->is_open = 0;
+    $this->end_date = date('Y-m-d h:i:s');
+    return $this->update_to_db();
   }
   
   public static function get_shifts_by_user( $userId ){
@@ -62,11 +73,10 @@ Class Shift{
     return $sArr;
   }
   
-  public static function open_shift( $userId, $datetime ){
+  public static function open_shift( $userId ){
     $pdo = DataConnector::getConnection();
-    $stmt = $pdo->prepare("INSERT INTO shifts ( user, is_open, start_date, end_date) VALUES ( :userId, true, :datetime, '0000-00-00 00:00:00')");
+    $stmt = $pdo->prepare("INSERT INTO shifts ( user, is_open, start_date, end_date) VALUES ( :userId, true, NOW(), '0000-00-00 00:00:00')");
     $stmt->bindParam(":userId", $userId, PDO::PARAM_INT);
-    $stmt->bindParam(":datetime", $datetime, PDO::PARAM_STR);
     $stmt->execute();
     return $pdo->lastInsertId();
   }
@@ -87,6 +97,18 @@ Class Shift{
       array_push($rArr, $iArr);
     };
     return $rArr;
+  }
+
+  private function update_to_db(){
+    $pdo = DataConnector::getConnection();
+    $stmt = $pdo->prepare("UPDATE shifts SET is_open = :io, start_date = :sd, end_date = :ed WHERE id = :id");
+    $stmt->bindParam(":io", $this->is_open);
+    $stmt->bindParam(":sd", $this->start_date);
+    $stmt->bindParam(":ed", $this->end_date);
+    $stmt->bindParam(":id", $this->id);
+    $execute = $stmt->execute();
+    $error = $stmt->errorInfo();
+    return $execute;
   }
 
 }

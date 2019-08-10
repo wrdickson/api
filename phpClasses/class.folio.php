@@ -26,7 +26,7 @@ Class Folio{
     //$this->sales = json_decode( '[{"a":"1"}]' );
 
     //payments
-    $this->payments = array();
+    $this->payments = Payment::getPaymentsByFolioId($id);
   }
 
   public function get_id(){

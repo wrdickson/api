@@ -19,6 +19,8 @@ require "phpClasses/class.reservation_history.php";
 require "phpClasses/class.sale_type.php";
 require "phpClasses/class.tax_type.php";
 require "phpClasses/class.sales_group.php";
+require "phpClasses/class.payment.php";
+require "phpClasses/class.payment_type.php";
 
 //set the server timezone
 date_default_timezone_set( DEFAULT_TIMEZONE );
@@ -55,6 +57,12 @@ $app->get('/types/', 'getTypes');
 //folios
 $app->post('/folios/:id', 'getFolio');
 
+//payments
+$app->post('/payment/', 'post_payment');
+
+//payment types
+$app->get('/payment-types/', 'get_payment_types');
+
 //reservations
 $app->get('/reservations/:id', 'getReservation');
 $app->put('/reservations/:id', 'updateReservation');
@@ -86,6 +94,8 @@ $app->post('/sale-types/', 'add_sale_type');
 //shifts
 $app->get('/userShift/:id', 'getUserShift');
 $app->post('/openShift/', 'openShift');
+$app->put('/shifts/close/:id', 'close_shift');
+$app->post('/shift-data/:id', 'get_shift_data');
 
 $app->post('/gump/', 'testGump');
 $app->post('/login/','login');
@@ -403,6 +413,17 @@ function checkUpdateAvailability(){
   print json_encode($response);
 }
 
+function close_shift( $shift_id ){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $shift = new Shift( $shift_id );
+  $response['execute'] = $shift->close_shift();
+
+  print json_encode( $response );
+}
+
 function createCustomer(){
   $app = \Slim\Slim::getInstance();
   $response = array();
@@ -456,10 +477,13 @@ function getFolio($id){
   $folio = new Folio($id);
   $response['folio'] = $folio->to_array();
   //TODO authenticate user
-
-  
-
   print json_encode($response);
+}
+
+function get_payment_types(){
+  $response = array();
+  $response['payment_types'] = Payment_Type::get_payment_types();
+  print json_encode( $response );
 }
 
 function getReservation($id){
@@ -562,6 +586,18 @@ function getSelectGroups(){
     print json_encode($response);  
 }
 
+function get_shift_data( $shift_id ){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $shift = new Shift($shift_id);
+  $response['shift'] = $shift->to_array();
+  $response['sales'] = $shift->get_sales();
+  $response['payments'] = $shift->get_payments();
+  print json_encode( $response );  
+}
+
 function getSpaces() {
     $app = \Slim\Slim::getInstance();
     $pdo = DataConnector::getConnection();
@@ -636,14 +672,14 @@ function getUserShift( $userId ){
 }
 
 function login (){
-    $app = \Slim\Slim::getInstance();
-    $response = array();
-    $params = json_decode($app->request->getBody(), true);
-    $response['params'] = $params;
-    //$response['prePost'] = $_SESSION;
-    $response['login'] = Logger::check_login( $params['username'], $params['password'] );
-    //$response['postPost'] = $_SESSION;
-    print json_encode($response);
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  //$response['prePost'] = $_SESSION;
+  $response['login'] = Logger::check_login( $params['username'], $params['password'] );
+  //$response['postPost'] = $_SESSION;
+  print json_encode($response);
 }
 
 function logoff(){
@@ -656,16 +692,26 @@ function logoff(){
 }
 
 function openShift(){
-    $app = \Slim\Slim::getInstance();
-    $response = array();
-    $params = json_decode($app->request->getBody(), true);
-    //TODO verify user . . . 
-    $iPerson = new Person( $params['user']['userId'] );
-    $newShiftId = Shift::open_shift( $params['user']['userId'], $params['startDate']);
-    $response['shiftId'] = $newShiftId;
-    $newShift = new Shift($newShiftId);
-    $response['shift'] = $newShift->to_array();
-    print json_encode($response);
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  //TODO verify user . . . 
+  $iPerson = new Person( $params['user']['userId'] );
+  $newShiftId = Shift::open_shift( $params['user']['userId']);
+  $response['shiftId'] = $newShiftId;
+  $newShift = new Shift($newShiftId);
+  $response['shift'] = $newShift->to_array();
+  print json_encode($response);
+}
+
+function post_payment(){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  $response['execute'] = Payment::post_payment( $params['payment_obj']['amount'], $params['payment_obj']['payment_type'], $params['payment_obj']['posted_by'], $params['payment_obj']['folio'], $params['payment_obj']['shift'] );
+  print json_encode( $response);
 }
 
 function postSale($folioId){

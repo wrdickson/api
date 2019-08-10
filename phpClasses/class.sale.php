@@ -46,6 +46,35 @@ Class Sale {
     return $salesArray;
   }
 
+  public static function get_sales_by_shift_id( $shift_id ){
+    $response = array();
+    $pdo = DataConnector::getConnection();
+    $stmt =$pdo->prepare("SELECT sales.id, sales.sale_date, tax_types.tax_title, tax_types.id AS 'tax_type', tax_types.tax_rate, sales.sales_item, sales_items.sales_item_title, sales.net, sales.tax, sales.total, sales.sold_by, users.username, sales.shift FROM ((( sales INNER JOIN sales_items ON sales.sales_item = sales_items.id )  INNER JOIN tax_types ON sales_items.tax_type = tax_types.id ) INNER JOIN users ON sales.sold_by = users.id) WHERE sales.shift = :shift_id ORDER BY sales.sale_date ASC");
+    $stmt->bindParam(':shift_id', $shift_id);
+    $response['execute'] = $stmt->execute();
+    $salesArray = array();
+    while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
+      $iArr = array();
+      $iArr['id'] = $obj->id;
+      $iArr['sale_date'] = $obj->sale_date;
+      $iArr['tax_type'] = $obj->tax_type;
+      $iArr['tax_title'] = $obj->tax_title;
+      $iArr['tax_rate'] = $obj->tax_rate;
+      $iArr['sales_item'] = $obj->sales_item;
+      $iArr['sales_item_title'] = $obj->sales_item_title;
+      $iArr['net'] = $obj->net;
+      $iArr['tax'] = $obj->tax;
+      $iArr['total'] = $obj->total;
+      $iArr['sold_by'] = $obj->sold_by;
+      $iArr['username'] = $obj->username;
+      $iArr['shift'] = $obj->shift;
+      array_push($salesArray, $iArr);
+    }
+    $response['sales'] = $salesArray;
+    //return $response;
+    return $salesArray;
+  }
+
   public static function post_sale(  $sales_item, $quantity, $net, $tax, $total, $sold_by, $folio, $shift, $notes ){
     $pdo = DataConnector::getConnection();
     $notesJson = json_encode( $notes );
