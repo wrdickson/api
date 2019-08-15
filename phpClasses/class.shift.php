@@ -48,11 +48,44 @@ Class Shift{
   /*
   * static methods
   */
+  public static function check_open_shifts_by_user( $user_id ){
+    $pdo = DataConnector::getConnection();
+    $stmt = $pdo->prepare("SELECT id FROM shifts WHERE user = :u AND is_open = true");
+    $stmt->bindParam(":u", $user_id);
+    $execute = $stmt->execute();
+    //  random array
+    $results = array();
+    //  each result hits the array . . . there had better only be 0 or 1 hits
+    while( $obj = $stmt->fetch( PDO::FETCH_OBJ ) ){
+      $shift = array();
+      $shift['id'] = $obj->id;
+      array_push( $results, $shift );
+    };
+    // if the array has an element, there is an open shift
+    // it better not have more than one open elment . . . RULE: can't have 2 open shifts
+    $openShiftQuantity = sizeof( $results );
+    return $openShiftQuantity;
+  }
+
   public function close_shift(){
     //use 0/1 not true/false
     $this->is_open = 0;
     $this->end_date = date('Y-m-d h:i:s');
     return $this->update_to_db();
+  }
+
+  public static function get_closed_shifts_by_user_id( $user_id ){
+    $pdo = DataConnector::getConnection();
+    $stmt = $pdo->prepare("SELECT * FROM shifts WHERE user = :ui AND is_open = false");
+    $stmt->bindParam( ":ui", $user_id );
+    $stmt->execute();
+    $closed_shifts = array();
+    while( $obj = $stmt->fetch( PDO::FETCH_OBJ )){
+      $iShift = new Shift( $obj->id );
+      array_push( $closed_shifts, $iShift->to_array() );
+    }
+    return $closed_shifts;
+    //return $stmt->errorInfo();
   }
   
   public static function get_shifts_by_user( $userId ){
@@ -97,6 +130,10 @@ Class Shift{
       array_push($rArr, $iArr);
     };
     return $rArr;
+  }
+
+  public function reopen_shift( $shift_id ){
+
   }
 
   private function update_to_db(){

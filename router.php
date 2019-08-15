@@ -96,6 +96,7 @@ $app->get('/userShift/:id', 'getUserShift');
 $app->post('/openShift/', 'openShift');
 $app->put('/shifts/close/:id', 'close_shift');
 $app->post('/shift-data/:id', 'get_shift_data');
+$app->post('/shift-reopen-options/', 'reopen_shift_options');
 
 $app->post('/gump/', 'testGump');
 $app->post('/login/','login');
@@ -723,6 +724,36 @@ function postSale($folioId){
   //TODO authenticate sale
   $post_success = Sale::post_sale( $params['sale_obj']['sales_item'], $params['sale_obj']['quantity'], $params['sale_obj']['net'], $params['sale_obj']['tax'], $params['sale_obj']['total'], $params['sale_obj']['sold_by'], $folioId, $params['sale_obj']['shift'], $params['sale_obj']['notes'] );
   $response['postSuccess'] = $post_success;
+  print json_encode( $response );
+}
+
+function reopen_shift_options(){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  //  TODO authenticate user
+
+  //make sure the user doesn't have any open shifts
+  $userId = $params['user']['userId'];
+  // this will report the number of open shifts
+  // 0 means they can reopen
+  // 1 means they have an open shift and can NOT reopen
+  // longer than 1 means we are in deep, deep trouble
+  $open_shift_quantity= Shift::check_open_shifts_by_user( $userId );
+  $response['check1'] = $open_shift_quantity;
+  $response['userId'] = $params['user']['userId'];
+  
+  if( $open_shift_quantity == 0 ){
+    //get the shifts that could be reopened
+    $response['closed_shifts'] = Shift::get_closed_shifts_by_user_id( $params['user']['userId'] );
+
+  } else {
+    //  return an error
+    $response['closed_shifts'] = Shift::get_closed_shifts_by_user_id( $params['user']['userId'] );
+  };
+
+
   print json_encode( $response );
 }
 
