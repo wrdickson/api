@@ -97,6 +97,7 @@ $app->post('/openShift/', 'openShift');
 $app->put('/shifts/close/:id', 'close_shift');
 $app->post('/shift-data/:id', 'get_shift_data');
 $app->post('/shift-reopen-options/', 'reopen_shift_options');
+$app->post('/shift-reopen/', 'reopen_shift');
 
 $app->post('/gump/', 'testGump');
 $app->post('/login/','login');
@@ -725,6 +726,19 @@ function postSale($folioId){
   $post_success = Sale::post_sale( $params['sale_obj']['sales_item'], $params['sale_obj']['quantity'], $params['sale_obj']['net'], $params['sale_obj']['tax'], $params['sale_obj']['total'], $params['sale_obj']['sold_by'], $folioId, $params['sale_obj']['shift'], $params['sale_obj']['notes'] );
   $response['postSuccess'] = $post_success;
   print json_encode( $response );
+}
+
+function reopen_shift(){
+  $app = \Slim\Slim::getInstance();
+  $response = array();
+  $params = json_decode($app->request->getBody(), true);
+  $response['params'] = $params;
+  //  TODO authenticate user
+  $shift = new Shift($params['shift_id']);
+  $response['reopenShift'] = $shift->reopen_shift();
+  $response['shift'] = $shift->to_array();
+
+  print json_encode($response);
 }
 
 function reopen_shift_options(){

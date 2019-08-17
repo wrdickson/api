@@ -132,8 +132,10 @@ Class Shift{
     return $rArr;
   }
 
-  public function reopen_shift( $shift_id ){
-
+  public function reopen_shift(){
+    $this->is_open = true;
+    $this->end_date = "0000-00-00 00:00:00";
+    return $this->update_to_db();
   }
 
   private function update_to_db(){
