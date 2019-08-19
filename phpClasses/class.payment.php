@@ -25,7 +25,10 @@ Class Payment {
 
   public static function get_payments_by_shift_id( $shift_id ){
     $pdo = DataConnector::getConnection();
-    $stmt = $pdo->prepare("SELECT payments.id, payments.date_posted, payments.amount, payments.payment_type, payment_types.payment_title, payments.posted_by, users.username AS posted_by_username, payments.folio, payments.shift FROM (( payments INNER JOIN payment_types ON payments.payment_type = payment_types.id ) INNER JOIN users ON payments.posted_by = users.id ) WHERE shift = :id ORDER BY payment_type ASC");
+    //$stmt = $pdo->prepare("SELECT payments.id, payments.date_posted, payments.amount, payments.payment_type, payment_types.payment_title, payments.posted_by, users.username AS posted_by_username, payments.folio, payments.shift FROM (( payments INNER JOIN payment_types ON payments.payment_type = payment_types.id ) INNER JOIN users ON payments.posted_by = users.id ) WHERE shift = :id ORDER BY payment_type ASC");
+
+    $stmt = $pdo->prepare("SELECT payments.id, payments.date_posted, payments.amount, payments.payment_type, payment_types.payment_title, payments.posted_by, users.username AS posted_by_username, payments.folio, folios.customer, customers.lastName, customers.firstName, folios.reservation, payments.shift FROM (((( payments INNER JOIN payment_types ON payments.payment_type = payment_types.id ) INNER JOIN users ON payments.posted_by = users.id ) INNER JOIN folios on payments.folio = folios.id ) INNER JOIN customers on folios.customer = customers.id ) WHERE shift = :id ORDER BY payment_type ASC");
+;
     $stmt->bindParam(":id", $shift_id);
     $stmt->execute();
     $folios = array();
@@ -39,6 +42,10 @@ Class Payment {
       $i['posted_by'] = $obj->posted_by;
       $i['posted_by_username'] = $obj->posted_by_username;
       $i['folio'] = $obj->folio;
+      $i['reservation'] = $obj->reservation;
+      $i['customer'] = $obj->customer;
+      $i['last_name'] = $obj->lastName;
+      $i['first_name'] = $obj->firstName;
       $i['shift'] = $obj->shift;
       array_push( $folios, $i );
     }
