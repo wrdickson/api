@@ -25,18 +25,19 @@ Class Payment {
 
   public static function get_payments_by_shift_id( $shift_id ){
     $pdo = DataConnector::getConnection();
-    //$stmt = $pdo->prepare("SELECT payments.id, payments.date_posted, payments.amount, payments.payment_type, payment_types.payment_title, payments.posted_by, users.username AS posted_by_username, payments.folio, payments.shift FROM (( payments INNER JOIN payment_types ON payments.payment_type = payment_types.id ) INNER JOIN users ON payments.posted_by = users.id ) WHERE shift = :id ORDER BY payment_type ASC");
-
     $stmt = $pdo->prepare("SELECT payments.id, payments.date_posted, payments.amount, payments.payment_type, payment_types.payment_title, payments.posted_by, users.username AS posted_by_username, payments.folio, folios.customer, customers.lastName, customers.firstName, folios.reservation, payments.shift FROM (((( payments INNER JOIN payment_types ON payments.payment_type = payment_types.id ) INNER JOIN users ON payments.posted_by = users.id ) INNER JOIN folios on payments.folio = folios.id ) INNER JOIN customers on folios.customer = customers.id ) WHERE shift = :id ORDER BY payment_type ASC");
-;
+
     $stmt->bindParam(":id", $shift_id);
     $stmt->execute();
+    $total_payments = 0;
+    $total_by_payment_type = array();
     $folios = array();
     while( $obj = $stmt->fetch(PDO::FETCH_OBJ) ){
       $i = array();
       $i['id'] = $obj->id;
       $i['date_posted'] = $obj->date_posted;
       $i['amount'] = $obj->amount;
+      $total_payments = $total_payments + (float) $obj->amount;
       $i['payment_type'] = $obj->payment_type;
       $i['payment_title'] = $obj->payment_title;
       $i['posted_by'] = $obj->posted_by;
@@ -49,7 +50,37 @@ Class Payment {
       $i['shift'] = $obj->shift;
       array_push( $folios, $i );
     }
+    $response = array();
+    $response['folios'] = $folios;
     return $folios;
+  }
+
+  public static function get_payment_total_by_shift_id( $shift_id ){
+    $pdo = DataConnector::getConnection();
+    $stmt = $pdo->prepare("SELECT amount FROM payments WHERE shift = :s");
+    $stmt->bindParam(":s", $shift_id);
+    $execute = $stmt->execute();
+    $total = 0;
+    while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
+      $total =  $total + floatval($obj->amount) ;
+    };
+    return $total;
+  }
+
+  public static function get_payment_totals_by_payment_type( $shift_id ){
+    $pdo = DataConnector::getConnection();
+    $stmt = $pdo->prepare("SELECT amount, payment_type FROM payments WHERE shift = :s");
+    $stmt->bindParam(":s", $shift_id);
+    $execute = $stmt->execute();
+    $payments_by_type = array();
+    while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
+      if( array_key_exists( $obj->payment_type, $payments_by_type ) ){
+        $payments_by_type[ $obj->payment_type ] += floatval( $obj->amount );
+      } else {
+        $payments_by_type[ $obj->payment_type ] = floatval( $obj->amount );
+      }
+    };
+    return $payments_by_type;
   }
 
   public static function post_payment( $amount, $payment_type, $posted_by, $folio, $shift ){

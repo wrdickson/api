@@ -8,6 +8,7 @@ Class Shift{
   private $start_date;
   private $end_date;
   
+  
   public function __construct( $id ){
     $pdo = DataConnector::getConnection();
     $stmt = $pdo->prepare("SELECT * FROM shifts WHERE id = :id");
@@ -41,8 +42,20 @@ Class Shift{
     return Payment::get_payments_by_shift_id( $this->id );
   }
 
+  public function get_payment_total(){
+    return Payment::get_payment_total_by_shift_id( $this->id );
+  }
+
+  public function get_payment_totals_by_payment_type(){
+    return Payment::get_payment_totals_by_payment_type( $this->id );
+  }
+
   public function get_sales(){
     return Sale::get_sales_by_shift_id( $this->id );
+  }
+
+  public function get_sales_totals(){
+
   }
   
   /*

@@ -596,6 +596,8 @@ function get_shift_data( $shift_id ){
   $shift = new Shift($shift_id);
   $response['shift'] = $shift->to_array();
   $response['sales'] = $shift->get_sales();
+  $response['payment_total'] = $shift->get_payment_total();
+  $response['payments_by_type'] = $shift->get_payment_totals_by_payment_type();
   $response['payments'] = $shift->get_payments();
   print json_encode( $response );  
 }
