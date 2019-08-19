@@ -64,7 +64,8 @@ Class Payment {
     while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
       $total =  $total + floatval($obj->amount) ;
     };
-    return $total;
+    // TODO is this the correct way to handle floating point irregularities?
+    return round($total, 2);
   }
 
   public static function get_payment_totals_by_payment_type( $shift_id ){
@@ -76,6 +77,8 @@ Class Payment {
     while( $obj = $stmt->fetch(PDO::FETCH_OBJ)){
       if( array_key_exists( $obj->payment_type, $payments_by_type ) ){
         $payments_by_type[ $obj->payment_type ] += floatval( $obj->amount );
+        // TODO is this the proper way to handle floating point irregularities?
+        $payments_by_type[ $obj->payment_type ] = round( $payments_by_type[ $obj->payment_type ], 2);
       } else {
         $payments_by_type[ $obj->payment_type ] = floatval( $obj->amount );
       }
