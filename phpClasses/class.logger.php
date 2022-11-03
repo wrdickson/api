@@ -6,6 +6,7 @@ class Logger {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE user_name = :username");
         $stmt->bindParam(":username", $testUsername, PDO::PARAM_STR);
         $stmt->execute();
+        //  TODO rowCount() is suposedly unreliable . . . see php docs
         if($stmt->rowCount() > 0){
             return true;
         }else{

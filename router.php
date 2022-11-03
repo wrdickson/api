@@ -190,7 +190,6 @@ function addReservation () {
     //update history with this reservation
     $iResHistory->add_history_snapshot( $iRes->to_array(), $params['user']['userId'], $params['user']['username'] );
     $response['resHist after add'] = $iResHistory->to_array();
-    
 
     print json_encode($response);
 }
